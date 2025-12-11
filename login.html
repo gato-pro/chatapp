@@ -18,9 +18,10 @@ body{
     background:rgba(255,255,255,0.03);
 }
 .input{
-    width:100%;padding:12px;border-radius:10px;
+    width:93.5%;padding:12px;border-radius:10px;
     border:1px solid rgba(255,255,255,0.06);
     background:transparent;color:#fff;margin-bottom:10px;
+    
 }
 .btn{
     width:100%;padding:12px;border-radius:10px;border:none;
@@ -29,7 +30,37 @@ body{
 .small{color:#9aa8bb;text-align:center;margin-top:10px}
 .link{color:#9bd;cursor:pointer;text-decoration:underline}
 .error{color:#ff6b6b;margin:8px 0;font-size:13px;display:none}
+
+/* continue with google button */
+.google-btn {
+  width: 100%;
+  background: white;
+  color: #444;
+  border: 1px solid #ccc;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+  transition: 0.2s;
+}
+
+.google-btn:hover {
+  background: #f2f2f2;
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+}
+
 </style>
+
+
 </head>
 
 <body>
@@ -42,10 +73,21 @@ body{
   <div id="error" class="error"></div>
 
   <button id="btnLogin" class="btn">Log in</button>
+  <!-- Continue writh gmail -->
+  <button id="googleSignIn" class="google-btn">
+  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="google-icon">
+  Continue with Google
+</button>
+
+  <div class="small">
+    Forgot your password? 
+    <span id="forgotLink" class="link">Reset here</span>
+  </div>
 
   <div class="small">No account?  
      <span class="link" onclick="location.href='signup.html'">Create one</span>
   </div>
+
 </div>
 
 <!-- Firebase COMPAT SDK -->
@@ -77,6 +119,7 @@ const db = firebase.database();
 <script>
 const errEl = document.getElementById("error");
 
+// Login button
 document.getElementById("btnLogin").addEventListener("click", async () => {
     errEl.style.display = "none";
 
@@ -103,6 +146,67 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
         errEl.style.display = "block";
     }
 });
+
+// Forgot password link
+document.getElementById("forgotLink").addEventListener("click", async () => {
+    errEl.style.display = "none";
+    const email = document.getElementById("email").value.trim();
+
+    if (!email) {
+        errEl.innerText = "Enter your email to reset password";
+        errEl.style.display = "block";
+        return;
+    }
+
+    try {
+        await auth.sendPasswordResetEmail(email);
+        errEl.style.color = "#6bff6b";
+        errEl.innerText = "Password reset email sent! Check your inbox.";
+        errEl.style.display = "block";
+    } catch (e) {
+        errEl.style.color = "#ff6b6b";
+        errEl.innerText = e.message;
+        errEl.style.display = "block";
+    }
+});
 </script>
+<script>
+const provider = new firebase.auth.GoogleAuthProvider();
+
+// Force popup + always ask user to choose account
+provider.setCustomParameters({ prompt: "select_account" });
+
+document.getElementById("googleSignIn").onclick = async () => {
+    try {
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+
+        // If Google does not give photo, use fallback avatar
+        const finalPhoto = user.photoURL 
+            ? user.photoURL 
+            : "https://i.ibb.co/2k0Q6fB/default-user.png"; // your fallback SVG or PNG
+
+        // Save/update user in database
+        const userRef = db.ref("users/" + user.uid);
+
+        await userRef.update({
+            name: user.displayName || "Unknown User",
+            email: user.email,
+            photo: finalPhoto,
+            uid: user.uid,
+            provider: "google",
+            lastLogin: Date.now()
+        });
+
+        // Redirect
+        location.href = "members.html";
+
+    } catch (err) {
+        alert(err.message);
+    }
+};
+</script>
+
+
 </body>
 </html>
